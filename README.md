@@ -1,33 +1,54 @@
-# 护眼提醒项目 (Eye Saver)
+# Eye Saver 👁️
 
-这是一个简单的 Windows 桌面应用程序，旨在帮助用户每隔 50 分钟休息一下眼睛，以保护视力。
+![Version](https://img.shields.io/github/v/release/study8677/EyeSaver)
+![License](https://img.shields.io/github/license/study8677/EyeSaver)
+![Python](https://img.shields.io/badge/python-3.12-blue)
 
-## 功能
+**Eye Saver** is a modern, lightweight Windows desktop application designed to protect your vision by reminding you to take breaks. Built with Python and CustomTkinter.
 
-- **定时提醒**: 每工作 50 分钟，弹出系统通知提醒休息。
-- **系统托盘**: 在系统托盘显示图标，右键可退出程序。
-- **轻量级**: 占用资源极少。
+[中文文档](README_CN.md) | [Download](https://github.com/study8677/EyeSaver/releases)
 
-## 安装与运行
+## ✨ Features
 
-本项目使用 `uv` 进行依赖管理。
+- **Smart Reminders**: Automatically reminds you to rest every 50 minutes (customizable).
+- **Modern Dashboard**: Beautiful, dark-mode compatible UI to track your focus sessions.
+- **Statistics**: Track your daily and total rest counts.
+- **Unobtrusive**: Runs in the system tray, minimal resource usage.
+- **Sound Alerts**: Gentle audio cues when it's time to rest.
 
-1.  克隆仓库:
-    ```bash
-    git clone <repository_url>
-    cd <repository_directory>
-    ```
+## 🚀 Installation
 
-2.  安装依赖并运行:
-    ```bash
-    uv run src/main.py
-    ```
+### Option 1: Download Executable (Recommended)
+1. Go to the [Releases](https://github.com/study8677/EyeSaver/releases) page.
+2. Download the latest `EyeSaver.exe`.
+3. Run it directly!
 
-## 开发
+### Option 2: Run from Source
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/study8677/EyeSaver.git
+   cd EyeSaver
+   ```
+2. Install dependencies using `uv` (or pip):
+   ```bash
+   uv sync
+   ```
+3. Run the application:
+   ```bash
+   uv run src/main.py
+   ```
 
-- 依赖管理: `uv add <package>`
-- 运行: `uv run src/main.py`
+## 🛠️ Usage
 
-## 许可证
+1. **Start**: Run the application. The dashboard will open.
+2. **Minimize**: Click the 'X' on the dashboard to minimize to the system tray.
+3. **Control**: Right-click the tray icon to Pause/Resume or Open Dashboard.
+4. **Settings**: Customize your work duration and sound preferences in the dashboard.
 
-MIT
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

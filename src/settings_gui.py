@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from .config_manager import ConfigManager
+from config_manager import ConfigManager
 
 class SettingsGUI:
     def __init__(self, config_manager: ConfigManager, on_save_callback=None):

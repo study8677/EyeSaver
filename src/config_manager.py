@@ -5,20 +5,31 @@ CONFIG_FILE = "config.json"
 
 DEFAULT_CONFIG = {
     "work_duration": 50,  # minutes
-    "rest_duration": 5,   # minutes (not used in logic yet, but good to store)
-    "sound_enabled": True
+    "rest_duration": 5,   # minutes
+    "sound_enabled": True,
+    "stats": {
+        "total_rests": 0,
+        "today_rests": 0,
+        "last_reset_date": ""
+    }
 }
 
 class ConfigManager:
     def __init__(self):
         self.config = self.load_config()
+        self.check_daily_reset()
 
     def load_config(self):
         if not os.path.exists(CONFIG_FILE):
             return DEFAULT_CONFIG.copy()
         try:
             with open(CONFIG_FILE, "r") as f:
-                return json.load(f)
+                data = json.load(f)
+                # Merge with default to ensure new keys exist
+                for key, value in DEFAULT_CONFIG.items():
+                    if key not in data:
+                        data[key] = value
+                return data
         except Exception:
             return DEFAULT_CONFIG.copy()
 
@@ -33,3 +44,20 @@ class ConfigManager:
     def set(self, key, value):
         self.config[key] = value
         self.save_config(self.config)
+
+    def check_daily_reset(self):
+        import datetime
+        today = datetime.date.today().isoformat()
+        stats = self.config.get("stats", DEFAULT_CONFIG["stats"])
+        
+        if stats.get("last_reset_date") != today:
+            stats["today_rests"] = 0
+            stats["last_reset_date"] = today
+            self.set("stats", stats)
+
+    def increment_rest_count(self):
+        self.check_daily_reset()
+        stats = self.config.get("stats", DEFAULT_CONFIG["stats"])
+        stats["total_rests"] += 1
+        stats["today_rests"] += 1
+        self.set("stats", stats)

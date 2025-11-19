@@ -1,0 +1,10 @@
+{
+    "work_duration": 50,
+    "rest_duration": 5,
+    "sound_enabled": true,
+    "stats": {
+        "total_rests": 0,
+        "today_rests": 0,
+        "last_reset_date": "2025-11-19"
+    }
+}

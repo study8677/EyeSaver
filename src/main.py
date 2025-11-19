@@ -1,19 +1,11 @@
-import time
-import threading
-import os
-import sys
-import winsound
-from PIL import Image, ImageDraw
-from pystray import Icon, MenuItem, Menu
-from plyer import notification
-
-from src.config_manager import ConfigManager
-from src.settings_gui import SettingsGUI
+from config_manager import ConfigManager
+from dashboard_gui import DashboardGUI
+import multiprocessing
 
 class EyeSaverApp:
     def __init__(self):
         self.config_manager = ConfigManager()
-        self.settings_gui = SettingsGUI(self.config_manager, self.on_settings_saved)
+        self.dashboard_process = None
         
         self.running = True
         self.paused = False
@@ -46,6 +38,7 @@ class EyeSaverApp:
 
     def notify_rest(self):
         self.play_sound()
+        self.config_manager.increment_rest_count()
         notification.notify(
             title='护眼提醒',
             message=f'已经工作 {self.config_manager.get("work_duration")} 分钟了，请休息一下眼睛！',
@@ -71,49 +64,48 @@ class EyeSaverApp:
     def on_quit(self, icon, item):
         self.running = False
         icon.stop()
+        if self.dashboard_process and self.dashboard_process.is_alive():
+            self.dashboard_process.terminate()
         sys.exit(0)
 
-    def on_settings(self, icon, item):
-        # Launch GUI in the main thread (or separate process if needed, but here we just invoke it)
-        # Note: pystray runs in its own thread usually. 
-        # Tkinter needs to run in the main thread. 
-        # Since we started pystray in the main thread (app.run -> icon.run), 
-        # we can't easily run tkinter alongside it in the SAME thread without conflict.
-        # A common workaround is to run tkinter in a separate process or thread, 
-        # but tkinter MUST be in the main thread usually.
-        # 
-        # Correction: pystray `icon.run()` blocks. 
-        # So we need to run the timer in a thread (done).
-        # And we need to run the GUI. 
-        # Since `icon.run()` is blocking the main thread, we have a problem launching tkinter.
-        # 
-        # Solution: We will run the GUI in a separate process using multiprocessing 
-        # OR we can try to run it in a thread (might be unstable).
-        # 
-        # BETTER SOLUTION for simple app: 
-        # Run the Settings GUI in a separate thread? No, tkinter hates that.
-        # 
-        # Let's try running the GUI in a separate PROCESS.
-        # This avoids GIL and threading issues with GUI frameworks.
-        import multiprocessing
-        p = multiprocessing.Process(target=self.open_settings_process)
-        p.start()
+    def on_open_dashboard(self, icon, item):
+        # We need to communicate with the dashboard process or just launch it
+        # Since we want a persistent dashboard that can minimize, we should probably run it in a separate process
+        # that stays alive.
+        
+        if self.dashboard_process is None or not self.dashboard_process.is_alive():
+            self.dashboard_process = multiprocessing.Process(target=self.run_dashboard_process)
+            self.dashboard_process.start()
+        else:
+            # If already running, we can't easily bring it to front from here without IPC.
+            # For simplicity in this version, we just let the user know or rely on them finding it in taskbar.
+            # Or we can kill and restart (brute force).
+            pass
 
-    def open_settings_process(self):
+    def run_dashboard_process(self):
         # Re-instantiate config manager in new process
         cm = ConfigManager()
-        gui = SettingsGUI(cm)
+        # We need a mock app controller or a way to communicate back.
+        # For now, the dashboard will read/write config, but won't control the main app's pause state directly
+        # unless we use shared memory or a file.
+        # To keep it simple: Dashboard writes to config. Main app reads config.
+        # Pause state: We can store 'paused' in config too?
+        # Let's add 'paused' to config for IPC.
+        
+        # Mock app controller for simple callbacks that might not work across processes without IPC
+        # So we will rely on ConfigManager for state sharing.
+        
+        gui = DashboardGUI(cm, None) 
+        # We need to inject a way to control the main app.
+        # Since we are in a different process, we can't pass 'self'.
+        # We will modify DashboardGUI to use ConfigManager for pause state if we want that.
+        # But for now, let's just show the stats and settings.
+        # The 'Pause' button in Dashboard might not work for the background thread unless we sync.
+        
         gui.show()
-
-    def on_settings_saved(self):
-        # Reload config
-        self.config_manager = ConfigManager() # Reload from file
-        print("Settings updated")
 
     def on_toggle_pause(self, icon, item):
         self.paused = not self.paused
-        # Update menu text (requires pystray update mechanism, which is tricky with simple menu)
-        # For now, just toggle. Ideally we update the icon or tooltip.
         state = "暂停" if self.paused else "运行"
         self.icon.notify(f"计时器已{state}")
 
@@ -126,13 +118,14 @@ class EyeSaverApp:
         # Setup system tray icon
         image = self.create_image()
         menu = Menu(
-            MenuItem('设置', self.on_settings),
+            MenuItem('打开主面板', self.on_open_dashboard),
             MenuItem('暂停/继续', self.on_toggle_pause),
             MenuItem('退出', self.on_quit)
         )
         self.icon = Icon("Eye Saver", image, "护眼提醒", menu)
         
-        # self.notify_rest() # Optional start notification
+        # Auto open dashboard on start
+        self.on_open_dashboard(None, None)
         
         self.icon.run()
 
