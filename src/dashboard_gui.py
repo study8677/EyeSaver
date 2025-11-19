@@ -66,7 +66,7 @@ class DashboardGUI:
         self.progress_bar.pack(pady=10)
         self.progress_bar.set(0)
         
-        self.time_label = ctk.CTkLabel(progress_frame, text="00:00 / 50:00", font=ctk.CTkFont(size=14, text_color="gray"))
+        self.time_label = ctk.CTkLabel(progress_frame, text="00:00 / 50:00", font=ctk.CTkFont(size=14), text_color="gray")
         self.time_label.pack(pady=5)
 
         # Controls
@@ -149,4 +149,4 @@ class DashboardGUI:
         ctk.CTkButton(dialog, text="保存", command=save).pack(pady=20)
 
     def on_close(self):
-        self.window.withdraw() # Hide window
+        self.window.destroy() # Destroy window to end process

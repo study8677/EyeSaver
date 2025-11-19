@@ -1,7 +1,7 @@
 {
     "work_duration": 50,
     "rest_duration": 5,
-    "sound_enabled": true,
+    "sound_enabled": false,
     "stats": {
         "total_rests": 0,
         "today_rests": 0,

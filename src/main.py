@@ -6,10 +6,38 @@ import winsound
 from PIL import Image, ImageDraw
 from pystray import Icon, MenuItem, Menu
 from plyer import notification
+import multiprocessing
+from multiprocessing import Value
 
 from config_manager import ConfigManager
 from dashboard_gui import DashboardGUI
-import multiprocessing
+
+# Standalone function for the dashboard process
+def run_dashboard_process(shared_last_rest_time, shared_paused):
+    # Re-instantiate config manager in new process
+    cm = ConfigManager()
+    
+    # Create a proxy object to mimic the app controller interface expected by DashboardGUI
+    class StateProxy:
+        def __init__(self, last_rest_time_val, paused_val):
+            self._last_rest_time = last_rest_time_val
+            self._paused = paused_val
+            
+        @property
+        def last_rest_time(self):
+            return self._last_rest_time.value
+            
+        @property
+        def paused(self):
+            return bool(self._paused.value)
+            
+        @paused.setter
+        def paused(self, value):
+            self._paused.value = 1 if value else 0
+
+    app_proxy = StateProxy(shared_last_rest_time, shared_paused)
+    gui = DashboardGUI(cm, app_proxy) 
+    gui.show()
 
 class EyeSaverApp:
     def __init__(self):
@@ -17,10 +45,28 @@ class EyeSaverApp:
         self.dashboard_process = None
         
         self.running = True
-        self.paused = False
+        # Use shared memory for state that needs to be accessed by the dashboard
+        self.shared_paused = Value('i', 0) # 0 for False, 1 for True
+        self.shared_last_rest_time = Value('d', time.time())
+        
         self.icon = None
         self.timer_thread = None
-        self.last_rest_time = time.time()
+
+    @property
+    def paused(self):
+        return bool(self.shared_paused.value)
+
+    @paused.setter
+    def paused(self, value):
+        self.shared_paused.value = 1 if value else 0
+
+    @property
+    def last_rest_time(self):
+        return self.shared_last_rest_time.value
+
+    @last_rest_time.setter
+    def last_rest_time(self, value):
+        self.shared_last_rest_time.value = value
 
     def create_image(self):
         # Create a simple icon image
@@ -78,40 +124,15 @@ class EyeSaverApp:
         sys.exit(0)
 
     def on_open_dashboard(self, icon, item):
-        # We need to communicate with the dashboard process or just launch it
-        # Since we want a persistent dashboard that can minimize, we should probably run it in a separate process
-        # that stays alive.
-        
         if self.dashboard_process is None or not self.dashboard_process.is_alive():
-            self.dashboard_process = multiprocessing.Process(target=self.run_dashboard_process)
+            # Pass shared values to the new process
+            self.dashboard_process = multiprocessing.Process(
+                target=run_dashboard_process,
+                args=(self.shared_last_rest_time, self.shared_paused)
+            )
             self.dashboard_process.start()
         else:
-            # If already running, we can't easily bring it to front from here without IPC.
-            # For simplicity in this version, we just let the user know or rely on them finding it in taskbar.
-            # Or we can kill and restart (brute force).
             pass
-
-    def run_dashboard_process(self):
-        # Re-instantiate config manager in new process
-        cm = ConfigManager()
-        # We need a mock app controller or a way to communicate back.
-        # For now, the dashboard will read/write config, but won't control the main app's pause state directly
-        # unless we use shared memory or a file.
-        # To keep it simple: Dashboard writes to config. Main app reads config.
-        # Pause state: We can store 'paused' in config too?
-        # Let's add 'paused' to config for IPC.
-        
-        # Mock app controller for simple callbacks that might not work across processes without IPC
-        # So we will rely on ConfigManager for state sharing.
-        
-        gui = DashboardGUI(cm, None) 
-        # We need to inject a way to control the main app.
-        # Since we are in a different process, we can't pass 'self'.
-        # We will modify DashboardGUI to use ConfigManager for pause state if we want that.
-        # But for now, let's just show the stats and settings.
-        # The 'Pause' button in Dashboard might not work for the background thread unless we sync.
-        
-        gui.show()
 
     def on_toggle_pause(self, icon, item):
         self.paused = not self.paused
@@ -140,7 +161,6 @@ class EyeSaverApp:
 
 if __name__ == "__main__":
     # Multiprocessing support for Windows
-    import multiprocessing
     multiprocessing.freeze_support()
     
     app = EyeSaverApp()
