@@ -1,3 +1,12 @@
+import time
+import threading
+import os
+import sys
+import winsound
+from PIL import Image, ImageDraw
+from pystray import Icon, MenuItem, Menu
+from plyer import notification
+
 from config_manager import ConfigManager
 from dashboard_gui import DashboardGUI
 import multiprocessing
